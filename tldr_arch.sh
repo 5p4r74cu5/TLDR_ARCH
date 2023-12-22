@@ -12,7 +12,7 @@ BASE_PKGS="base base-devel linux linux-firmware man sudo nano git reflector btrf
 UCODE_PKGS="amd-ucode"
 
 # KDE Packages
-KDE_PKGS="xorg-server plasma-desktop plasma-wayland-session plasma-pa plasma-nm plasma-systemmonitor kscreen powerdevil kdeplasma-addons discover konsole dolphin bluedevil flatpak sddm sddm-kcm"
+KDE_PKGS="xorg-server plasma-desktop plasma-wayland-session plasma-pa plasma-nm plasma-systemmonitor kscreen bluedevil powerdevil kdeplasma-addons discover dolphin konsole flatpak sddm sddm-kcm"
 
 # Hyprland Packages
 HYPR_PKGS="hyprland"
@@ -20,18 +20,43 @@ HYPR_PKGS="hyprland"
 # GPU Packages
 GPU_PKGS="mesa xf86-video-amdgpu vulkan-radeon libva-mesa-driver mesa-vdpau"
 
-echo'
 ###############################
-# BASIC ARCH INSTALLER SCRIPT #
-###############################
-'
-
-###############################
-# Keyboard Configruation
+# Logo
 ###############################
 
-echo "Preparing for installation..."
+     ███        ▄█        ████████▄     ▄████████  
+▀▜██████████   ███        ███   ▀███   ███    ███  
+    ▀███▀▀██   ███        ███    ███   ███    ███  
+     ███   ▀   ███        ███    ███  ▄███▄▄▄▄██▀  
+     ███       ███        ███    ███ ▀▀███▀▀▀▀▀    
+     ███       ███        ███    ███ ▀███████████  
+     ███       ███▌     ▄ ███   ▄███   ███    ███  
+    ▄████▀     █████▙▄▄██ ████████▀    ███    ███  
+               ▀                       ███    ███  
+                                                   
+   ▄████████    ▄████████  ▄████████    ▄█    █▄   
+  ███    ███   ███    ███ ███    ███   ███    ███  
+  ███    ███   ███    ███ ███    █▀    ███    ███  
+  ███    ███  ▄███▄▄▄▄██▀ ███         ▄███▄▄▄▄███▄▄
+▀███████████ ▀▀███▀▀▀▀▀   ███        ▀▀███▀▀▀▀███▀ 
+  ███    ███ ▀███████████ ███    █▄    ███    ███  
+  ███    ███   ███    ███ ███    ███   ███    ███  
+  ███    █▀    ███    ███ ████████▀    ███    █▀   
+               ███    ███                          
+
+###############################
+# Preparing for Installation
+###############################
+
+echo "Configuring keyboard..."
 loadkeys $KEY_MAP
+
+echo "Verifying internet connectivity.."
+ping -c 1 archlinux.org > /dev/null
+if [[ $? -ne 0 ]]; then
+    echo "No internet detected. Please check your internet connection."
+    exit 1
+fi
 
 ###############################
 # Installation of Arch
@@ -69,9 +94,13 @@ arch-chroot /mnt bash -c 'cat > /etc/hosts <<EOF
 EOF'
 arch-chroot /mnt systemctl enable NetworkManager
 
-echo "Configuring Reflector..."
+echo "Configuring package management..."
+arch-chroot /mnt sed -Ei 's/^#(Color)$/\1\nILoveCandy/;s/^#(ParallelDownloads).*/\1 = 10/' /etc/pacman.conf
 arch-chroot /mnt systemctl enable reflector
 arch-chroot /mnt systemctl enable reflector.timer
+
+echo "Configuring systemd-oomd..."
+arch-chroot /mnt systemctl enable systemd-oomd
 
 echo "Configuring ZRAM..."
 pacstrap /mnt zram-generator
@@ -138,4 +167,39 @@ if [[ $DISABLE_ROOT == y ]] ; then
 else
   echo "Please choose a password for root."
   arch-chroot /mnt passwd
+fi
+
+###############################
+# Configuration of Secure Boot
+###############################
+
+grub-install --target=x86_64-efi --efi-directory=esp --bootloader-id=GRUB --modules="tpm" --disable-shim-lock
+grub-mkconfig -o /boot/grub/grub.cfg
+pacstrap /mnt sbctl
+arch-chroot /mnt sbctl create-keys
+arch-chroot /mnt sbctl enroll-keys -m
+arch-chroot /mnt /bin/bash -c '
+KEY_FILES=(/sys/firmware/efi/efivars/PK-* /sys/firmware/efi/efivars/db-* /sys/firmware/efi/efivars/KEK-*)
+for KEY_FILE in "${KEY_FILES[@]}"; do
+    if [[ $(lsattr "$KEY_FILE") == *i* ]]; then
+        chattr -i "$KEY_FILE"
+    fi
+done
+'
+arch-chroot /mnt sbctl status
+arch-chroot /mnt sbctl sign -s /efi/EFI/GRUB/grubx64.efi
+arch-chroot /mnt sbctl sign -s /boot/vmlinuz-linux
+arch-chroot /mnt sbctl verify
+
+###############################
+# Installation Complete
+###############################
+
+read -p "Installation is complete. Would you like to restart your computer? [Y/n] " -r RESTART
+RESTART="${RESTART:-Y}"
+RESTART="${RESTART,,}"
+if [[ $RESTART == "y" ]]; then
+    reboot
+elif [[ $RESTART == "n" ]]; then
+    :
 fi
