@@ -5,7 +5,6 @@
 ####################################################
 
 # System Configuration
-LOCALE="en_AU.UTF-8"
 TIMEZONE="Australia/Melbourne"
 
 # Base Packages
@@ -80,12 +79,12 @@ case "$KEY_MAP" in
         return 1
         ;;
     '/') 
-        localectl list-keymaps
+        ctl list-keymaps
         clear
         return 1
         ;;
     *) 
-        if ! localectl list-keymaps | grep -Fxq "$KEY_MAP"; then
+        if ! ctl list-keymaps | grep -Fxq "$KEY_MAP"; then
             error_print "Invalid keyboard layout detected, please try again."
             return 1
         fi
@@ -102,7 +101,7 @@ if [[ -z "$HOSTNAME" ]]; then
 fi
 return 0
 
-echo "Please choose your locale, in xx_XX format: "
+echo "Please choose your , in xx_XX format, for example en_US: "
 read -r LOCALE
 case "$LOCALE" in
     '') error_print "No locale detected, please try again."
@@ -241,8 +240,7 @@ arch-chroot /mnt sed -i "/^#$locale/s/^#//" /mnt/etc/locale.gen
 echo "LANG=$LOCALE" > /mnt/etc/locale.conf
 arch-chroot /mnt locale-gen
 
-echo "Configuring timezone..."
-arch-chroot /mnt ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime
+
 
 echo "Configuring hosts file..."
 arch-chroot /mnt bash -c 'cat > /etc/hosts <<EOF
@@ -259,19 +257,18 @@ echo "Configuring mkinitcpio..."
 cat > /mnt/etc/mkinitcpio.conf <<EOF
 HOOKS=(systemd autodetect keyboard sd-vconsole modconf block sd-encrypt filesystems)
 EOF
+arch-chroot /mnt mkinitcpio -P
 
-echo "Configuring filesystem table..."
+echo "Adding encrypted root partition to filesystem table..."
 UUID=$(blkid -s UUID -o value $CRYPTROOT)
 sed -i "\,^GRUB_CMDLINE_LINUX=\"\",s,\",&rd.luks.name=$UUID=cryptroot root=$BTRFS," /mnt/etc/default/grub
 
+echo "Configuring timezone..."
+arch-chroot /mnt ln -sf /usr/share/zoneinfo/$(curl -s http://ip-api.com/line?fields=timezone) /etc/localtime
 
 echo "Configuring clock..."
 arch-chroot /mnt hwclock --systohc
-timedatectl set-ntp true
-
-
-
-
+arch-chroot /mnt timedatectl set-ntp true
 
 
 
@@ -348,8 +345,11 @@ arch-chroot /mnt passwd -l root
 # Configuration of Secure Boot
 ###############################
 
+echo "Configuring boot loader..."
 grub-install --target=x86_64-efi --efi-directory=esp --bootloader-id=GRUB --modules="tpm" --disable-shim-lock
 grub-mkconfig -o /boot/grub/grub.cfg
+
+echo "Configuring secure boot..."
 pacstrap /mnt sbctl
 arch-chroot /mnt sbctl create-keys
 arch-chroot /mnt sbctl enroll-keys -m
@@ -361,10 +361,8 @@ for KEY_FILE in "${KEY_FILES[@]}"; do
     fi
 done
 '
-arch-chroot /mnt sbctl status
 arch-chroot /mnt sbctl sign -s /efi/EFI/GRUB/grubx64.efi
 arch-chroot /mnt sbctl sign -s /boot/vmlinuz-linux
-arch-chroot /mnt sbctl verify
 
 ###############################
 # Installation Complete
