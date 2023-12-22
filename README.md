@@ -1,1 +1,1 @@
-# Basic-Arch-Install-Script
+# TLDR-ARCH
