@@ -5,10 +5,7 @@
 ####################################################
 
 # Base Packages
-BASE_PKGS="base base-devel linux linux-firmware linux-headers man sudo nano git reflector btrfs-progs grub efibootmgr pipewire pipewire-alsa pipewire-pulse pipewire-jack wireplumber"
 
-# KDE Packages
-KDE_PKGS="xorg-server plasma-desktop plasma-wayland-session plasma-pa plasma-nm plasma-systemmonitor kscreen bluedevil powerdevil kdeplasma-addons discover dolphin konsole flatpak sddm sddm-kcm"
 
 # Hyprland Packages
 HYPR_PKGS="hyprland"
@@ -152,10 +149,6 @@ if [[ "$CRYPT_PASS" != "$CRYPT_PASS2" ]]; then
 fi
 return 0
 
-####################################################
-# PARTITION CONFIGURATION
-####################################################
-
 echo "List of available disks:"
 DISK_LIST=($(lsblk -dpnoNAME | grep -P "/dev/sd|nvme|vd"))
 DISK_COUNT=${#DISK_LIST[@]}
@@ -168,6 +161,24 @@ do
         break
     fi
 done
+
+echo "If you would like to add any additional packages to install, please choose them now, separated by spaces:"
+read -r OPT_PKGS_INPUT
+
+if [[ -n "$OPT_PKGS_INPUT" ]]; then
+    IFS=' ' read -r -a OPT_PKGS <<< "$OPT_PKGS_INPUT"
+    echo "Optional packages specified: ${OPT_PKGS[*]}"
+    # Store the optional packages in a variable to use later
+    OPTIONAL_PACKAGES="${OPT_PKGS[@]}"
+else
+    echo "No additional packages specified. Skipping..."
+    # Set an empty variable for optional packages
+    OPTIONAL_PACKAGES=""
+fi
+
+####################################################
+# PARTITION CONFIGURATION
+####################################################
 
 echo "Preparing disk..."
 wipefs -af "$DISK"
@@ -208,9 +219,9 @@ mount -o "$BTRFS_OPTS",subvol=@home "$BTRFS" /mnt/home
 mkdir -p /mnt/efi
 mount $EFI /mnt/efi
 
-###############################
-# Installation of Arch
-###############################
+####################################################
+# INSTALLATION OF SYSTEM
+####################################################
 
 echo "Detecting CPU microcode.."
 CPU=$(grep vendor_id /proc/cpuinfo)
@@ -221,7 +232,12 @@ else
 fi
 
 echo "Installing Arch..."
+BASE_PKGS="base base-devel linux linux-firmware linux-headers man nano sudo git reflector btrfs-progs grub efibootmgr pipewire pipewire-alsa pipewire-pulse pipewire-jack wireplumber"
 pacstrap -K /mnt $BASE_PKGS $MICROCODE
+
+####################################################
+# CONFIGURATION OF SYSTEM
+####################################################
 
 echo "Configuring hostname..."
 echo "$HOSTNAME" > /mnt/etc/hostname
@@ -236,8 +252,6 @@ echo "Configuring locale..."
 arch-chroot /mnt sed -i "/^#$locale/s/^#//" /mnt/etc/locale.gen
 echo "LANG=$LOCALE" > /mnt/etc/locale.conf
 arch-chroot /mnt locale-gen
-
-
 
 echo "Configuring hosts file..."
 arch-chroot /mnt bash -c 'cat > /etc/hosts <<EOF
@@ -267,10 +281,6 @@ echo "Configuring clock..."
 arch-chroot /mnt hwclock --systohc
 arch-chroot /mnt timedatectl set-ntp true
 
-
-
-
-
 echo "Configuring package management..."
 arch-chroot /mnt sed -Ei 's/^#(Color)$/\1\nILoveCandy/;s/^#(ParallelDownloads).*/\1 = 10/' /etc/pacman.conf
 arch-chroot /mnt systemctl enable reflector
@@ -286,22 +296,28 @@ arch-chroot /mnt bash -c 'cat > /etc/systemd/zram-generator.conf <<EOF
 zram-size = min(ram, 8192)
 EOF'
 
-###############################
-# Installation of KDE
-###############################
+####################################################
+# INSTALLATION OF DESKTOP ENVIRONMENT
+####################################################
 
-echo "Installing KDE..."
+echo "Installing KDE Plasma..."
+KDE_PKGS="xorg-server plasma-desktop plasma-wayland-session plasma-pa plasma-nm plasma-systemmonitor kscreen bluedevil powerdevil kdeplasma-addons discover dolphin konsole flatpak"
 pacstrap /mnt $KDE_PKGS
-echo "Configuring KDE..."
+echo "Configuring KDE Plasma..."
 arch-chroot /mnt systemctl enable bluetooth
+
+echo "Installing SDDM..."
+DM_PKGS="sddm sddm-kcm"
+pacstrap /mnt $DM_PKGS
+echo "Configuring SDDM..."
 arch-chroot /mnt systemctl enable sddm
 
-###############################
-# Installation of Hyprland
-###############################
+####################################################
+# INSTALLATION OF ADDITIONAL PACKAGES
+####################################################
 
-echo "Installing Hyprland..."
-pacstrap /mnt $HYPR_PKGS
+echo "Installing optional packages..."
+pacstrap /mnt $OPT_PKGS
 
 ###############################
 # Installation of GPU Drivers
