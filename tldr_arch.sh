@@ -4,9 +4,6 @@
 # SUBSTITUTION VARIABLES
 ####################################################
 
-# System Configuration
-TIMEZONE="Australia/Melbourne"
-
 # Base Packages
 BASE_PKGS="base base-devel linux linux-firmware linux-headers man sudo nano git reflector btrfs-progs grub efibootmgr pipewire pipewire-alsa pipewire-pulse pipewire-jack wireplumber"
 
