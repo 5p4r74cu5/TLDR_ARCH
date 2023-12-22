@@ -169,11 +169,10 @@ if [[ -n "$OPT_PKGS_INPUT" ]]; then
     IFS=' ' read -r -a OPT_PKGS <<< "$OPT_PKGS_INPUT"
     echo "Optional packages specified: ${OPT_PKGS[*]}"
     # Store the optional packages in a variable to use later
-    OPTIONAL_PACKAGES="${OPT_PKGS[@]}"
+    OPT_PKGS_INSTALL="echo "Installing optional packages..."
+pacstrap /mnt ${OPT_PKGS[@]}"
 else
-    echo "No additional packages specified. Skipping..."
-    # Set an empty variable for optional packages
-    OPTIONAL_PACKAGES=""
+    OPT_PKGS_INSTALL=""
 fi
 
 ####################################################
@@ -316,8 +315,7 @@ arch-chroot /mnt systemctl enable sddm
 # INSTALLATION OF ADDITIONAL PACKAGES
 ####################################################
 
-echo "Installing optional packages..."
-pacstrap /mnt $OPT_PKGS
+$OPT_PKGS
 
 ###############################
 # Installation of GPU Drivers
