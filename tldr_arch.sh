@@ -78,11 +78,7 @@ read -r LOCALE_INPUT
 if [ -z "$LOCALE_INPUT" ]; then
     echo "No locale detected, please try again."
 else
-    if locale -a | grep -q "^$LOCALE_INPUT$"; then
-        LOCALE="$LOCALE_INPUT"
-    else
-        echo "Invalid locale detected, please try again."
-    fi
+    LOCALE="$LOCALE_INPUT"
 fi
 
 echo "Press Enter to continue..."
