@@ -8,5 +8,5 @@ To Do:
 - Encryption of boot impossible and a bad idea? Probably.
 - timedatectl set-ntp true
 - KDE wallet auto with user password
-- Install a browser, brave maybe
+- Install a browser, brave maybe, flatseal
 - Add gufw
