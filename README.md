@@ -9,3 +9,4 @@ To Do:
 - timedatectl set-ntp true
 - KDE wallet auto with user password
 - Install a browser, brave maybe
+- Add gufw
