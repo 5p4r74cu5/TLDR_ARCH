@@ -1,13 +1,6 @@
 #!/usr/bin/bash
 
 ####################################################
-# SUBSTITUTION VARIABLES
-####################################################
-
-# GPU Packages
-GPU_PKGS="mesa xf86-video-amdgpu vulkan-radeon libva-mesa-driver mesa-vdpau"
-
-####################################################
 # LOGO
 ####################################################
 
@@ -36,14 +29,14 @@ echo "
 "
 
 ####################################################
-# PREPARING FOR INSTALLATION
+# PREPARATION
 ####################################################
 
 echo "Checking secure boot status..."
 if [[ $secure_boot == y ]]; then
     setup_mode=$(bootctl status | grep -E "Secure Boot.*setup" | wc -l)
     if [[ $setup_mode -ne 1 ]]; then
-        echo "Secure boot setup mode is disabled, please enable setup mode before continuing."
+        echo "Secure boot setup mode is disabled, setup mode must be enabled before continuing with the installtion."
         exit 1
     fi
 fi
@@ -51,12 +44,12 @@ fi
 echo "Verifying internet connectivity.."
 ping -c 1 archlinux.org > /dev/null
 if [[ $? -ne 0 ]]; then
-    echo "No internet detected. Please connect to the internet and restart the script."
+    echo "No internet detected, internet must be connected before continuing with the installation."
     exit 1
 fi
 
 ####################################################
-# USER INPUTS
+# USER INPUT
 ####################################################
 
 echo "Please choose a keyboard layout: "
@@ -89,7 +82,7 @@ if [[ -z "$HOSTNAME" ]]; then
 fi
 return 0
 
-echo "Please choose your , in xx_XX format, for example en_US: "
+echo "Please choose your locale in xx_XX format, for example en_US: "
 read -r LOCALE
 case "$LOCALE" in
     '') error_print "No locale detected, please try again."
@@ -130,7 +123,7 @@ echo "Please choose an encryption password: "
 read -r -s CRYPT_PASS
 if [[ -z "$CRYPT_PASS" ]]; then
     echo
-    error_print "No password was detected, please try again."
+    error_print "No encryption password was detected, please try again."
     return 1
 fi
 echo
@@ -158,17 +151,26 @@ done
 
 echo "If you would like to include any additional packages in the installation please add them here, separated by spaces, or leave empty to skip: "
 read -r OPT_PKGS_INPUT
-
 if [[ -n "$OPT_PKGS_INPUT" ]]; then
     IFS=' ' read -r -a OPT_PKGS <<< "$OPT_PKGS_INPUT"
-    OPT_PKGS_INSTALL="pacstrap /mnt ${OPT_PKGS[@]}"
+    OPT_PKGS_INSTALL="echo "Installing optional packages..."
+    pacstrap /mnt ${OPT_PKGS[@]}"
 else
     OPT_PKGS_INSTALL=""
+fi
+
+echo "Would you like AMD GPU drivers to be included in the installation (y/n)? "
+read -r INSTALL_AMD_GPU_PKGS
+if [[ "${INSTALL_AMD_GPU_PKGS,,}" == "y" ]]; then
+    AMD_GPU_PKGS="mesa xf86-video-amdgpu vulkan-radeon libva-mesa-driver mesa-vdpau"
 fi
 
 ####################################################
 # PARTITION CONFIGURATION
 ####################################################
+
+echo "Configuring console keyboard layout..."
+loadkeys "$KEY_MAP"
 
 echo "Preparing disk..."
 wipefs -af "$DISK"
@@ -210,7 +212,7 @@ mkdir -p /mnt/efi
 mount $EFI /mnt/efi
 
 ####################################################
-# INSTALLATION OF SYSTEM
+# SYSTEM INSTALLATION
 ####################################################
 
 echo "Detecting CPU microcode.."
@@ -226,7 +228,7 @@ BASE_PKGS="base base-devel linux linux-firmware linux-headers man nano sudo git 
 pacstrap -K /mnt $BASE_PKGS $MICROCODE
 
 ####################################################
-# CONFIGURATION OF SYSTEM
+# SYSTEM CONFIGURATION
 ####################################################
 
 echo "Configuring hostname..."
@@ -279,15 +281,8 @@ arch-chroot /mnt systemctl enable reflector.timer
 echo "Configuring systemd-oomd..."
 arch-chroot /mnt systemctl enable systemd-oomd
 
-echo "Configuring ZRAM..."
-pacstrap /mnt zram-generator
-arch-chroot /mnt bash -c 'cat > /etc/systemd/zram-generator.conf <<EOF
-[zram0]
-zram-size = min(ram, 8192)
-EOF'
-
 ####################################################
-# INSTALLATION OF DESKTOP ENVIRONMENT
+# DESKTOP ENVIRONMENT
 ####################################################
 
 echo "Installing KDE Plasma..."
@@ -303,21 +298,21 @@ echo "Configuring SDDM..."
 arch-chroot /mnt systemctl enable sddm
 
 ####################################################
-# INSTALLATION OF ADDITIONAL PACKAGES
+# AMD GPU Drivers
+####################################################
+
+echo "Installing GPU drivers..."
+pacstrap /mnt $AMD_GPU_PKGS
+
+####################################################
+# ADDITIONAL PACKAGES
 ####################################################
 
 $OPT_PKGS_INSTALL
 
-###############################
-# Installation of GPU Drivers
-###############################
-
-echo "Installing GPU drivers..."
-pacstrap /mnt $GPU_PKGS
-
-###############################
-# Installing Timeshift
-###############################
+####################################################
+# TIMESHIFT
+####################################################
 
 echo "Installing Timeshift..."
 pacstrap /mnt grub-btrfs inotify-tools timeshift
@@ -330,9 +325,9 @@ arch-chroot /mnt /bin/bash -c 'rm -rf /yay'
 arch-chroot /mnt systemctl enable grub-btrfsd
 arch-chroot /mnt systemctl enable cronie
 
-###############################
-# Configuring Users
-###############################
+####################################################
+# USERS
+####################################################
 
 echo "Configuring user account..."
 echo "%wheel ALL=(ALL:ALL) ALL" > /mnt/etc/sudoers.d/wheel
@@ -343,9 +338,20 @@ echo "Disabling root account..."
 arch-chroot /mnt passwd -d root
 arch-chroot /mnt passwd -l root
 
-###############################
-# Configuration of Secure Boot
-###############################
+####################################################
+# ZRAM
+####################################################
+
+echo "Configuring ZRAM..."
+pacstrap /mnt zram-generator
+arch-chroot /mnt bash -c 'cat > /etc/systemd/zram-generator.conf <<EOF
+[zram0]
+zram-size = min(ram, 8192)
+EOF'
+
+####################################################
+# SECURE BOOT
+####################################################
 
 echo "Configuring boot loader..."
 grub-install --target=x86_64-efi --efi-directory=esp --bootloader-id=GRUB --modules="tpm" --disable-shim-lock
@@ -366,9 +372,9 @@ done
 arch-chroot /mnt sbctl sign -s /efi/EFI/GRUB/grubx64.efi
 arch-chroot /mnt sbctl sign -s /boot/vmlinuz-linux
 
-###############################
-# Installation Complete
-###############################
+####################################################
+# FINISHED
+####################################################
 
 read -p "Installation is complete. Would you like to restart your computer? [Y/n] " -r RESTART
 RESTART="${RESTART:-Y}"
