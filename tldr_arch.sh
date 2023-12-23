@@ -60,6 +60,7 @@ else
     loadkeys "$KEY_MAP"
 fi
 
+echo "Please choose a hostname: "
 read -r HOSTNAME
 if [[ -z "$HOSTNAME" ]]; then
     echo "No hostname detected, please try again."
