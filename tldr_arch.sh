@@ -101,24 +101,24 @@ while true; do
     fi
 done
 
-while true; do
-    echo "Please choose a disk encryption passphrase: "
-    read -r -s CRYPT_PASS
-    if [[ -z "$CRYPT_PASS" ]]; then
-        echo
-        echo "No encryption passphrase was detected, please try again."
-    else
-        echo
-        echo "Please confirm your passphrase password: "
-        read -r -s CRYPT_PASS2
-        echo
-        if [[ "$CRYPT_PASS" != "$CRYPT_PASS2" ]]; then
-            echo "The passphrases don't match, please try again."
-        else
-            break
-        fi
-    fi
-done
+#while true; do
+#    echo "Please choose a disk encryption passphrase: "
+#    read -r -s CRYPT_PASS
+#    if [[ -z "$CRYPT_PASS" ]]; then
+#        echo
+#        echo "No encryption passphrase was detected, please try again."
+#    else
+#        echo
+#        echo "Please confirm your passphrase password: "
+#        read -r -s CRYPT_PASS2
+#        echo
+#        if [[ "$CRYPT_PASS" != "$CRYPT_PASS2" ]]; then
+#            echo "The passphrases don't match, please try again."
+#        else
+#            break
+#        fi
+#    fi
+#done
 
 echo "Available disks for the installation:"
 PS3="Please select the number of the corresponding disk (e.g. 1): "
@@ -166,10 +166,10 @@ parted -s "$DISK" \
     mklabel gpt \
     mkpart EFI fat32 1MiB 513MiB \
     set 1 esp on \
-    mkpart CRYPTROOT 513MiB 100% \
+    mkpart ROOT 513MiB 100% \
     quit
 EFI="/dev/disk/by-partlabel/EFI"
-CRYPTROOT="/dev/disk/by-partlabel/CRYPTROOT"
+ROOT="/dev/disk/by-partlabel/ROOT"
 partprobe "$DISK"
 
 echo "Press Enter to continue..."
@@ -181,18 +181,18 @@ mkfs.fat -F 32 "$EFI"
 echo "Press Enter to continue..."
 read -r
 
-echo "Encrypting root partition..."
-cryptsetup luksErase -q "$CRYPTROOT"
-echo -n "$CRYPT_PASS" | cryptsetup luksFormat "$CRYPTROOT" -d -
-echo -n "$CRYPT_PASS" | cryptsetup open "$CRYPTROOT" cryptroot -d -
-BTRFS="/dev/mapper/cryptroot"
+# echo "Encrypting root partition..."
+# cryptsetup luksErase -q "$CRYPTROOT"
+# echo -n "$CRYPT_PASS" | cryptsetup luksFormat "$CRYPTROOT" -d -
+# echo -n "$CRYPT_PASS" | cryptsetup open "$CRYPTROOT" cryptroot -d -
+# BTRFS="/dev/mapper/cryptroot"
 
 echo "Press Enter to continue..."
 read -r
 
 echo "Formatting root partition..."
-mkfs.btrfs -f "$BTRFS"
-mount "$BTRFS" /mnt
+mkfs.btrfs -f "$ROOT"
+mount "$ROOT" /mnt
 
 echo "Press Enter to continue..."
 read -r
@@ -207,9 +207,9 @@ read -r
 
 echo "Mounting partitions..."
 umount /mnt
-mount -o "$BTRFS_OPTS",subvol=@ "$BTRFS" /mnt
+mount -o "$BTRFS_OPTS",subvol=@ "$ROOT" /mnt
 mkdir -p /mnt/home
-mount -o "$BTRFS_OPTS",subvol=@home "$BTRFS" /mnt/home
+mount -o "$BTRFS_OPTS",subvol=@home "$ROOT" /mnt/home
 mkdir -p /mnt/efi
 mount "$EFI" /mnt/efi
 
@@ -261,9 +261,9 @@ echo "Press Enter to continue..."
 read -r
 
 echo "Configuring locale..."
-arch-chroot /mnt sed -i "/^#$LOCALE/s/^#//" /mnt/etc/locale.gen
-echo "LANG=$LOCALE" > /mnt/etc/locale.conf
+arch-chroot /mnt sed -i 's/^#$LOCALE UTF-8/$LOCALE UTF-8/' /etc/locale.gen
 arch-chroot /mnt locale-gen
+echo "LANG=$LOCALE" > /mnt/etc/locale.conf
 
 echo "Press Enter to continue..."
 read -r
@@ -285,18 +285,18 @@ arch-chroot /mnt systemctl enable NetworkManager
 echo "Press Enter to continue..."
 read -r
 
-echo "Configuring mkinitcpio..."
-cat > /mnt/etc/mkinitcpio.conf <<EOF
-HOOKS=(systemd autodetect keyboard sd-vconsole modconf block sd-encrypt filesystems)
-EOF
-arch-chroot /mnt mkinitcpio -P
+# echo "Configuring mkinitcpio..."
+# cat > /mnt/etc/mkinitcpio.conf <<EOF
+# HOOKS=(systemd autodetect keyboard sd-vconsole modconf block sd-encrypt filesystems)
+# EOF
+# arch-chroot /mnt mkinitcpio -P
 
 echo "Press Enter to continue..."
 read -r
 
-echo "Adding encrypted root partition to filesystem table..."
-UUID=$(blkid -s UUID -o value $CRYPTROOT)
-sed -i "\,^GRUB_CMDLINE_LINUX=\"\",s,\",&rd.luks.name=$UUID=cryptroot root=$BTRFS," /mnt/etc/default/grub
+# echo "Adding encrypted root partition to filesystem table..."
+# UUID=$(blkid -s UUID -o value $CRYPTROOT)
+# sed -i "\,^GRUB_CMDLINE_LINUX=\"\",s,\",&rd.luks.name=$UUID=cryptroot root=$BTRFS," /mnt/etc/default/grub
 
 echo "Press Enter to continue..."
 read -r
@@ -381,9 +381,11 @@ pacstrap /mnt grub-btrfs inotify-tools timeshift
 echo "Configuring Timeshift..."
 sed -i 's/subvolid=[0-9]*,//g' /mnt/etc/fstab
 arch-chroot /mnt /bin/bash -c 'sed -i "s|^ExecStart=.*|ExecStart=/usr/bin/grub-btrfsd --syslog --timeshift-auto|" /etc/systemd/system/grub-btrfsd.service'
-arch-chroot /mnt /bin/bash -c 'pacman -S --needed git base-devel && git clone https://aur.archlinux.org/yay.git && cd yay && makepkg -si'
-arch-chroot /mnt /bin/bash -c 'yay -S timeshift-autosnap'
-arch-chroot /mnt /bin/bash -c 'rm -rf /yay'
+# arch-chroot /mnt /bin/bash -c 'pacman -S --needed git base-devel'
+# arch-chroot /mnt /bin/bash -c 'git clone https://aur.archlinux.org/yay.git'
+# arch-chroot /mnt /bin/bash -c 'cd yay && makepkg -si'
+# arch-chroot /mnt /bin/bash -c 'yay -S timeshift-autosnap'
+# arch-chroot /mnt /bin/bash -c 'rm -rf /yay'
 arch-chroot /mnt systemctl enable grub-btrfsd
 arch-chroot /mnt systemctl enable cronie
 
