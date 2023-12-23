@@ -207,14 +207,17 @@ sgdisk -Zo "$DISK"
 echo "Press Enter to continue..."
 read -r
 
-echo "Creating partitions..."
 parted -s "$DISK" \
     mklabel gpt \
     mkpart EFI fat32 1MiB 513MiB \
     set 1 esp on \
     mkpart CRYPTROOT 513MiB 100% \
+    quit
+
 EFI="/dev/disk/by-partlabel/EFI"
 CRYPTROOT="/dev/disk/by-partlabel/CRYPTROOT"
+
+partprobe "$DISK"
 
 echo "Press Enter to continue..."
 read -r
