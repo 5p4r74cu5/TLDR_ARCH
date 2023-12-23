@@ -213,7 +213,7 @@ parted -s "$DISK" \
     mkpart EFI fat32 1MiB 513MiB \
     set 1 esp on \
     mkpart CRYPTROOT 513MiB 100% \
-ESP="/dev/disk/by-partlabel/EFI"
+EFI="/dev/disk/by-partlabel/EFI"
 CRYPTROOT="/dev/disk/by-partlabel/CRYPTROOT"
 
 echo "Press Enter to continue..."
