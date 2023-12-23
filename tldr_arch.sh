@@ -172,14 +172,8 @@ EFI="/dev/disk/by-partlabel/EFI"
 ROOT="/dev/disk/by-partlabel/ROOT"
 partprobe "$DISK"
 
-echo "Press Enter to continue..."
-read -r
-
 echo "Formatting EFI partition..."
 mkfs.fat -F 32 "$EFI"
-
-echo "Press Enter to continue..."
-read -r
 
 # echo "Encrypting root partition..."
 # cryptsetup luksErase -q "$CRYPTROOT"
@@ -187,23 +181,14 @@ read -r
 # echo -n "$CRYPT_PASS" | cryptsetup open "$CRYPTROOT" cryptroot -d -
 # BTRFS="/dev/mapper/cryptroot"
 
-echo "Press Enter to continue..."
-read -r
-
 echo "Formatting root partition..."
 mkfs.btrfs -f "$ROOT"
 mount "$ROOT" /mnt
-
-echo "Press Enter to continue..."
-read -r
 
 echo "Creating BTRFS subvolumes..."
 BTRFS_OPTS="ssd,noatime,compress=zstd:1,space_cache=v2,discard=async"
 btrfs subvolume create /mnt/@
 btrfs subvolume create /mnt/@home
-
-echo "Press Enter to continue..."
-read -r
 
 echo "Mounting partitions..."
 umount /mnt
@@ -212,9 +197,6 @@ mkdir -p /mnt/home
 mount -o "$BTRFS_OPTS",subvol=@home "$ROOT" /mnt/home
 mkdir -p /mnt/efi
 mount "$EFI" /mnt/efi
-
-echo "Press Enter to continue..."
-read -r
 
 ####################################################
 # SYSTEM INSTALLATION
@@ -227,9 +209,6 @@ if [[ "$CPU" == *"AuthenticAMD"* ]]; then
 else
      MICROCODE="intel-ucode"
 fi
-
-echo "Press Enter to continue..."
-read -r
 
 echo "Installing Arch..."
 BASE_PKGS="base base-devel linux linux-firmware linux-headers man nano sudo git reflector btrfs-progs grub efibootmgr pipewire pipewire-alsa pipewire-pulse pipewire-jack wireplumber"
@@ -245,28 +224,16 @@ read -r
 echo "Configuring hostname..."
 echo "$HOSTNAME" > /mnt/etc/hostname
 
-echo "Press Enter to continue..."
-read -r
-
 echo "Generating filesystem table..."
 genfstab -U /mnt >> /mnt/etc/fstab
 
-echo "Press Enter to continue..."
-read -r
-
 echo "Configuring keyboard layout..."
 echo "KEYMAP=$KEY_MAP" > /mnt/etc/vconsole.conf
-
-echo "Press Enter to continue..."
-read -r
 
 echo "Configuring locale..."
 arch-chroot /mnt sed -i 's/^#$LOCALE UTF-8/$LOCALE UTF-8/' /etc/locale.gen
 arch-chroot /mnt locale-gen
 echo "LANG=$LOCALE" > /mnt/etc/locale.conf
-
-echo "Press Enter to continue..."
-read -r
 
 echo "Configuring hosts file..."
 arch-chroot /mnt bash -c 'cat > /etc/hosts <<EOF
@@ -275,15 +242,9 @@ arch-chroot /mnt bash -c 'cat > /etc/hosts <<EOF
 127.0.1.1   '"$HOSTNAME"'.localdomain   '"$HOSTNAME"'
 EOF'
 
-echo "Press Enter to continue..."
-read -r
-
 echo "Configuring network..."
 pacstrap /mnt networkmanager
 arch-chroot /mnt systemctl enable NetworkManager
-
-echo "Press Enter to continue..."
-read -r
 
 # echo "Configuring mkinitcpio..."
 # cat > /mnt/etc/mkinitcpio.conf <<EOF
@@ -291,52 +252,34 @@ read -r
 # EOF
 # arch-chroot /mnt mkinitcpio -P
 
-echo "Press Enter to continue..."
-read -r
-
 # echo "Adding encrypted root partition to filesystem table..."
 # UUID=$(blkid -s UUID -o value $CRYPTROOT)
 # sed -i "\,^GRUB_CMDLINE_LINUX=\"\",s,\",&rd.luks.name=$UUID=cryptroot root=$BTRFS," /mnt/etc/default/grub
 
-echo "Press Enter to continue..."
-read -r
-
 echo "Configuring timezone..."
 arch-chroot /mnt ln -sf /usr/share/zoneinfo/$(curl -s http://ip-api.com/line?fields=timezone) /etc/localtime
 
-echo "Press Enter to continue..."
-read -r
-
-echo "Configuring clock..."
-arch-chroot /mnt hwclock --systohc
-arch-chroot /mnt timedatectl set-ntp true
-
-echo "Press Enter to continue..."
-read -r
+# echo "Configuring clock..."
+# arch-chroot /mnt hwclock --systohc
+# arch-chroot /mnt timedatectl set-ntp true
 
 echo "Configuring package management..."
 arch-chroot /mnt sed -Ei 's/^#(Color)$/\1\nILoveCandy/;s/^#(ParallelDownloads).*/\1 = 10/' /etc/pacman.conf
 arch-chroot /mnt systemctl enable reflector
 arch-chroot /mnt systemctl enable reflector.timer
 
-echo "Press Enter to continue..."
-read -r
-
 echo "Configuring systemd-oomd..."
 arch-chroot /mnt systemctl enable systemd-oomd
-
-echo "Press Enter to continue..."
-read -r
 
 ####################################################
 # AMD GPU Drivers
 ####################################################
 
-echo "Installing GPU drivers..."
-pacstrap /mnt $AMD_GPU_PKGS
-
 echo "Press Enter to continue..."
 read -r
+
+echo "Installing GPU drivers..."
+pacstrap /mnt $AMD_GPU_PKGS
 
 ####################################################
 # DESKTOP ENVIRONMENT
@@ -348,17 +291,11 @@ pacstrap /mnt $KDE_PKGS
 echo "Configuring KDE Plasma..."
 arch-chroot /mnt systemctl enable bluetooth
 
-echo "Press Enter to continue..."
-read -r
-
 echo "Installing SDDM..."
 DM_PKGS="sddm sddm-kcm"
 pacstrap /mnt $DM_PKGS
 echo "Configuring SDDM..."
 arch-chroot /mnt systemctl enable sddm
-
-echo "Press Enter to continue..."
-read -r
 
 ####################################################
 # ADDITIONAL PACKAGES
@@ -369,9 +306,6 @@ if [[ "$INSTALL_OPT_PKGS" == true ]]; then
     pacstrap /mnt "${OPT_PKGS[@]}"
 fi
 
-echo "Press Enter to continue..."
-read -r
-
 ####################################################
 # TIMESHIFT
 ####################################################
@@ -380,7 +314,7 @@ echo "Installing Timeshift..."
 pacstrap /mnt grub-btrfs inotify-tools timeshift
 echo "Configuring Timeshift..."
 sed -i 's/subvolid=[0-9]*,//g' /mnt/etc/fstab
-arch-chroot /mnt /bin/bash -c 'sed -i "s|^ExecStart=.*|ExecStart=/usr/bin/grub-btrfsd --syslog --timeshift-auto|" /etc/systemd/system/grub-btrfsd.service'
+# arch-chroot /mnt /bin/bash -c 'sed -i "s|^ExecStart=.*|ExecStart=/usr/bin/grub-btrfsd --syslog --timeshift-auto|" /etc/systemd/system/grub-btrfsd.service'
 # arch-chroot /mnt /bin/bash -c 'pacman -S --needed git base-devel'
 # arch-chroot /mnt /bin/bash -c 'git clone https://aur.archlinux.org/yay.git'
 # arch-chroot /mnt /bin/bash -c 'cd yay && makepkg -si'
@@ -388,9 +322,6 @@ arch-chroot /mnt /bin/bash -c 'sed -i "s|^ExecStart=.*|ExecStart=/usr/bin/grub-b
 # arch-chroot /mnt /bin/bash -c 'rm -rf /yay'
 arch-chroot /mnt systemctl enable grub-btrfsd
 arch-chroot /mnt systemctl enable cronie
-
-echo "Press Enter to continue..."
-read -r
 
 ####################################################
 # USERS
@@ -401,15 +332,9 @@ echo "%wheel ALL=(ALL:ALL) ALL" > /mnt/etc/sudoers.d/wheel
 arch-chroot /mnt useradd -m -G wheel -s /bin/bash "$USERNAME"
 echo "$USERNAME:$USER_PASS" | arch-chroot /mnt chpasswd
 
-echo "Press Enter to continue..."
-read -r
-
 echo "Disabling root account..."
 arch-chroot /mnt passwd -d root
 arch-chroot /mnt passwd -l root
-
-echo "Press Enter to continue..."
-read -r
 
 ####################################################
 # ZRAM
@@ -422,9 +347,6 @@ arch-chroot /mnt bash -c 'cat > /etc/systemd/zram-generator.conf <<EOF
 zram-size = min(ram, 8192)
 EOF'
 
-echo "Press Enter to continue..."
-read -r
-
 ####################################################
 # SECURE BOOT
 ####################################################
@@ -432,9 +354,6 @@ read -r
 echo "Configuring boot loader..."
 arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=GRUB --modules="tpm" --disable-shim-lock
 arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
-
-echo "Press Enter to continue..."
-read -r
 
 echo "Configuring secure boot..."
 pacstrap /mnt sbctl
@@ -451,18 +370,12 @@ done
 arch-chroot /mnt sbctl sign -s /efi/EFI/GRUB/grubx64.efi
 arch-chroot /mnt sbctl sign -s /boot/vmlinuz-linux
 
-echo "Press Enter to continue..."
-read -r
-
 ####################################################
 # FINISHED
 ####################################################
 
 echo "Unmounting partitions..."
 umount -R /mnt
-
-echo "Press Enter to continue..."
-read -r
 
 read -p "Installation is complete. Would you like to restart your computer? [Y/n] " -r RESTART
 RESTART="${RESTART:-Y}"
