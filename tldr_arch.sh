@@ -196,7 +196,7 @@ echo "Press Enter to continue..."
 read -r
 
 echo "Formatting root partition..."
-mkfs.btrfs "$BTRFS"
+mkfs.btrfs -f "$BTRFS"
 mount "$BTRFS" /mnt
 
 echo "Press Enter to continue..."
