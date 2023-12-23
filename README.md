@@ -10,3 +10,4 @@ To Do:
 - KDE wallet auto with user password
 - Install a browser, brave maybe, flatseal
 - Add gufw
+- timeshift pre configured
