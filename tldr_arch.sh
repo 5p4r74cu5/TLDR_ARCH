@@ -62,12 +62,6 @@ fi
 
 echo "Please choose a hostname: "
 read -r HOSTNAME
-if [[ -z "$HOSTNAME" ]]; then
-    echo "No hostname detected, please try again."
-    exit 1
-fi
-echo "Please choose a hostname: "
-read -r HOSTNAME
 while [[ -z "$HOSTNAME" || ! "$HOSTNAME" =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]$ ]]; do
     echo "Invalid hostname detected, please try again: "
     read -r HOSTNAME
