@@ -107,18 +107,18 @@ while true; do
 done
 
 while true; do
-    echo "Please choose an encryption password: "
+    echo "Please choose a disk encryption passphrase: "
     read -r -s CRYPT_PASS
     if [[ -z "$CRYPT_PASS" ]]; then
         echo
-        echo "No encryption password was detected, please try again."
+        echo "No encryption passphrase was detected, please try again."
     else
         echo
-        echo "Please confirm your encryption password: "
+        echo "Please confirm your passphrase password: "
         read -r -s CRYPT_PASS2
         echo
         if [[ "$CRYPT_PASS" != "$CRYPT_PASS2" ]]; then
-            echo "The passwords don't match, please try again."
+            echo "The passphrases don't match, please try again."
         else
             break
         fi
