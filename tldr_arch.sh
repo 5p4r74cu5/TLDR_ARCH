@@ -33,12 +33,10 @@ echo "
 ####################################################
 
 echo "Checking secure boot status..."
-if [[ $secure_boot == y ]]; then
-    setup_mode=$(bootctl status | grep -E "Secure Boot.*setup" | wc -l)
-    if [[ $setup_mode -ne 1 ]]; then
-        echo "Secure boot setup mode is disabled, setup mode must be enabled before continuing with the installtion."
-        exit 1
-    fi
+setup_mode=$(bootctl status | grep -E "Secure Boot.*setup" | wc -l)
+if [[ $setup_mode -ne 1 ]]; then
+    echo "Secure boot setup mode is disabled, setup mode must be enabled before continuing with the installation."
+    exit 1
 fi
 
 echo "Verifying internet connectivity.."
@@ -54,45 +52,38 @@ fi
 
 echo "Please choose a keyboard layout: "
 read -r KEY_MAP
-case "$KEY_MAP" in
-    '') 
-        error_print "No keyboard layout detected, please try again."
-        return 1
-        ;;
-    '/') 
-        ctl list-keymaps
-        clear
-        return 1
-        ;;
-    *) 
-        if ! ctl list-keymaps | grep -Fxq "$KEY_MAP"; then
-            error_print "Invalid keyboard layout detected, please try again."
-            return 1
-        fi
-        loadkeys "$KEY_MAP"
-        return 0
-        ;;
-esac
+if [[ -z "$KEY_MAP" ]]; then
+    echo "No keyboard layout detected, please try again."
+elif ! localectl list-keymaps | grep -Fxq "$KEY_MAP"; then
+    echo "Invalid keyboard layout detected, please try again."
+else
+    loadkeys "$KEY_MAP"
+fi
 
-echo "Please choose a hostname: "
 read -r HOSTNAME
 if [[ -z "$HOSTNAME" ]]; then
     echo "No hostname detected, please try again."
     exit 1
 fi
+echo "Please choose a hostname: "
+read -r HOSTNAME
+while [[ -z "$HOSTNAME" || ! "$HOSTNAME" =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]$ ]]; do
+    echo "Invalid hostname detected, please try again: "
+    read -r HOSTNAME
+done
 
 echo "Please choose your locale in xx_XX format, for example en_US: "
-read -r LOCALE
-case "$LOCALE" in
-    '') error_print "No locale detected, please try again."
-        return 1
-        ;;
-    *)  if ! grep -q "^#\?$(sed 's/[].*[]/\\&/g' <<< "$LOCALE") " /etc/locale.gen; then
-            error_print "Invalid locale detected, please try again."
-            return 1
-        fi
-        ;;
-esac
+read -r LOCALE_INPUT
+if [ -z "$LOCALE_INPUT" ]; then
+    echo "No locale detected, please try again."
+else
+    MATCHED_LOCALE=$(locale -a | grep -E "^${LOCALE_INPUT}\b" | head -n 1)
+    if [ -n "$MATCHED_LOCALE" ]; then
+        LOCALE="$MATCHED_LOCALE"
+    else
+        echo "Invalid locale detected, please try again."
+    fi
+fi
 
 echo "Please choose a name for your user account: "
 read -r USERNAME
@@ -100,62 +91,67 @@ while [[ -z "$USERNAME" ]]; do
     echo "No user name detected, please try again: "
     read -r USERNAME
 done
-echo "Please choose a password for $USERNAME: "
-read -r -s USER_PASS
-if [[ -z "$USER_PASS" ]]; then
-    echo
-    error_print "No password detected, please try again."
-    return 1
-fi
-echo
-echo "Please confirm your user password: "
-read -r -s USER_PASS2
-echo
-if [[ "$USER_PASS" != "$USER_PASS2" ]]; then
-    echo
-    error_print "The passwords don't match, please try again."
-    return 1
-fi
-return 0
 
-echo "Please choose an encryption password: "
-read -r -s CRYPT_PASS
-if [[ -z "$CRYPT_PASS" ]]; then
-    echo
-    error_print "No encryption password was detected, please try again."
-    return 1
-fi
-echo
-echo "Please confirm your encryption password: "
-read -r -s CRYPT_PASS2
-echo
-if [[ "$CRYPT_PASS" != "$CRYPT_PASS2" ]]; then
-    error_print "The passwords don't match, please try again."
-    return 1
-fi
-return 0
-
-echo "List of available disks:"
-DISK_LIST=($(lsblk -dpnoNAME | grep -P "/dev/sd|nvme|vd"))
-DISK_COUNT=${#DISK_LIST[@]}
-PS3="Please select which disk you would like to use for the installation (1-$DISK_COUNT): "
-select ENTRY in "${DISK_LIST[@]}";
-do
-    DISK="$ENTRY"
-    read -p "The installation will be completed using $DISK. All data on this disk will be erased, please type YES in capital letters to confirm your choice: " CONFIRM
-    if [[ "$CONFIRM" == "YES" ]]; then
-        break
+while true; do
+    echo "Please choose a password for $USERNAME: "
+    read -r -s USER_PASS
+    if [[ -z "$USER_PASS" ]]; then
+        echo
+        echo "No password detected, please try again."
+    else
+        echo
+        echo "Please confirm your user password: "
+        read -r -s USER_PASS2
+        echo
+        if [[ "$USER_PASS" != "$USER_PASS2" ]]; then
+            echo "The passwords don't match, please try again."
+        else
+            break
+        fi
     fi
+done
+
+while true; do
+    echo "Please choose an encryption password: "
+    read -r -s CRYPT_PASS
+    if [[ -z "$CRYPT_PASS" ]]; then
+        echo
+        echo "No encryption password was detected, please try again."
+    else
+        echo
+        echo "Please confirm your encryption password: "
+        read -r -s CRYPT_PASS2
+        echo
+        if [[ "$CRYPT_PASS" != "$CRYPT_PASS2" ]]; then
+            echo "The passwords don't match, please try again."
+        else
+            break
+        fi
+    fi
+done
+
+while true; do
+    echo "List of available disks:"
+    DISK_LIST=($(lsblk -dpnoNAME | grep -P "/dev/sd|nvme|vd"))
+    DISK_COUNT=${#DISK_LIST[@]}
+    PS3="Please select which disk you would like to use for the installation (1-$DISK_COUNT): "
+    select ENTRY in "${DISK_LIST[@]}";
+    do
+        DISK="$ENTRY"
+        read -p "The installation will be completed using $DISK. All data on this disk will be erased, please type yes in capital letters to confirm your choice: " CONFIRM
+        if [[ "$CONFIRM" == "YES" ]]; then
+            break 2
+        fi
+    done
 done
 
 echo "If you would like to include any additional packages in the installation please add them here, separated by spaces, or leave empty to skip: "
 read -r OPT_PKGS_INPUT
 if [[ -n "$OPT_PKGS_INPUT" ]]; then
     IFS=' ' read -r -a OPT_PKGS <<< "$OPT_PKGS_INPUT"
-    OPT_PKGS_INSTALL="echo "Installing optional packages..."
-    pacstrap /mnt ${OPT_PKGS[@]}"
+    INSTALL_OPT_PKGS=true
 else
-    OPT_PKGS_INSTALL=""
+    INSTALL_OPT_PKGS=false
 fi
 
 echo "Would you like AMD GPU drivers to be included in the installation (y/n)? "
@@ -181,16 +177,16 @@ parted -s "$DISK" \
     mkpart ESP fat32 1MiB 513MiB \
     set 1 esp on \
     mkpart CRYPTROOT 513MiB 100% \
-EFI="/dev/disk/by-partlabel/ESP"
-CRYPT_ROOT="/dev/disk/by-partlabel/CRYPTROOT"
+EFI="/dev/disk/by-partlabel/EFI"
+CRYPTROOT="/dev/disk/by-partlabel/CRYPTROOT"
 partprobe "$DISK"
 
-info_print "Formatting EFI partition..."
+echo "Formatting EFI partition..."
 mkfs.fat -F 32 "$EFI"
 
 echo "Encrypting root partition..."
-echo -n "$CRYPT_PASS" | cryptsetup luksFormat "$CRYPT_ROOT" -d -
-echo -n "$CRYPT_PASS" | cryptsetup open "$CRYPT_ROOT" cryptroot -d - 
+echo -n "$CRYPT_PASS" | cryptsetup luksFormat "$CRYPTROOT" -d -
+echo -n "$CRYPT_PASS" | cryptsetup open "$CRYPTROOT" cryptroot -d - 
 BTRFS="/dev/mapper/cryptroot"
 
 echo "Formatting root partition..."
@@ -208,7 +204,8 @@ mount -o "$BTRFS_OPTS",subvol=@ "$BTRFS" /mnt
 mkdir -p /mnt/home
 mount -o "$BTRFS_OPTS",subvol=@home "$BTRFS" /mnt/home
 mkdir -p /mnt/efi
-mount $EFI /mnt/efi
+mount "$EFI" /mnt/efi
+
 
 ####################################################
 # SYSTEM INSTALLATION
@@ -240,7 +237,7 @@ echo "Configuring keyboard layout..."
 echo "KEYMAP=$KEY_MAP" > /mnt/etc/vconsole.conf
 
 echo "Configuring locale..."
-arch-chroot /mnt sed -i "/^#$locale/s/^#//" /mnt/etc/locale.gen
+arch-chroot /mnt sed -i "/^#$LOCALE/s/^#//" /mnt/etc/locale.gen
 echo "LANG=$LOCALE" > /mnt/etc/locale.conf
 arch-chroot /mnt locale-gen
 
@@ -307,7 +304,10 @@ pacstrap /mnt $AMD_GPU_PKGS
 # ADDITIONAL PACKAGES
 ####################################################
 
-$OPT_PKGS_INSTALL
+if [[ "$INSTALL_OPT_PKGS" == true ]]; then
+    echo "Installing optional packages..."
+    pacstrap /mnt "${OPT_PKGS[@]}"
+fi
 
 ####################################################
 # TIMESHIFT
@@ -353,7 +353,7 @@ EOF'
 ####################################################
 
 echo "Configuring boot loader..."
-grub-install --target=x86_64-efi --efi-directory=esp --bootloader-id=GRUB --modules="tpm" --disable-shim-lock
+grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=GRUB --modules="tpm" --disable-shim-lock
 grub-mkconfig -o /boot/grub/grub.cfg
 
 echo "Configuring secure boot..."
