@@ -75,9 +75,6 @@ else
     LOCALE="$LOCALE_INPUT"
 fi
 
-echo "Press Enter to continue..."
-read -r
-
 echo "Please choose a name for your user account: "
 read -r USERNAME
 while [[ -z "$USERNAME" ]]; do
