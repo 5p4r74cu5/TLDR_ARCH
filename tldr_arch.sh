@@ -60,18 +60,12 @@ else
     loadkeys "$KEY_MAP"
 fi
 
-echo "Press Enter to continue..."
-read -r
-
 echo "Please choose a hostname: "
 read -r HOSTNAME
 while [[ -z "$HOSTNAME" || ! "$HOSTNAME" =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]$ ]]; do
     echo "Invalid hostname detected, please try again: "
     read -r HOSTNAME
 done
-
-echo "Press Enter to continue..."
-read -r
 
 echo "Please choose your locale, for example en_US.UTF-8: "
 read -r LOCALE_INPUT
@@ -90,9 +84,6 @@ while [[ -z "$USERNAME" ]]; do
     echo "No user name detected, please try again: "
     read -r USERNAME
 done
-
-echo "Press Enter to continue..."
-read -r
 
 while true; do
     echo "Please choose a password for $USERNAME: "
@@ -113,9 +104,6 @@ while true; do
     fi
 done
 
-echo "Press Enter to continue..."
-read -r
-
 while true; do
     echo "Please choose a disk encryption passphrase: "
     read -r -s CRYPT_PASS
@@ -135,24 +123,6 @@ while true; do
     fi
 done
 
-echo "Press Enter to continue..."
-read -r
-
-#while true; do
-#    echo "List of available disks:"
-#    DISK_LIST=($(lsblk -dpnoNAME | grep -P "/dev/sd|nvme|vd"))
-#    DISK_COUNT=${#DISK_LIST[@]}
-#    PS3="Please select which disk you would like to use for the installation (1-$DISK_COUNT): "
-#    select ENTRY in "${DISK_LIST[@]}";
-#    do
-#        DISK="$ENTRY"
-#        read -p "The installation will be completed using $DISK. All data on this disk will be erased, please type yes in capital letters to confirm your choice: " CONFIRM
-#        if [[ "$CONFIRM" == "YES" ]]; then
-#            break 2
-#        fi
-#    done
-#done
-
 echo "Available disks for the installation:"
 PS3="Please select the number of the corresponding disk (e.g. 1): "
 select DISK in $(lsblk -dpnoNAME | grep -P "/dev/sd|nvme|vd");
@@ -165,10 +135,6 @@ do
     fi
 done
 
-
-echo "Press Enter to continue..."
-read -r
-
 echo "If you would like to include any additional packages in the installation please add them here, separated by spaces, or leave empty to skip: "
 read -r OPT_PKGS_INPUT
 if [[ -n "$OPT_PKGS_INPUT" ]]; then
@@ -178,17 +144,11 @@ else
     INSTALL_OPT_PKGS=false
 fi
 
-echo "Press Enter to continue..."
-read -r
-
 echo "Would you like AMD GPU drivers to be included in the installation (y/n)? "
 read -r INSTALL_AMD_GPU_PKGS
 if [[ "${INSTALL_AMD_GPU_PKGS,,}" == "y" ]]; then
     AMD_GPU_PKGS="mesa xf86-video-amdgpu vulkan-radeon libva-mesa-driver mesa-vdpau"
 fi
-
-echo "Press Enter to continue..."
-read -r
 
 ####################################################
 # PARTITION CONFIGURATION
@@ -196,9 +156,6 @@ read -r
 
 echo "Configuring console keyboard layout..."
 loadkeys "$KEY_MAP"
-
-echo "Press Enter to continue..."
-read -r
 
 echo "Preparing disk..."
 wipefs -af "$DISK"
@@ -227,27 +184,16 @@ mkfs.fat -F 32 "$EFI"
 echo "Press Enter to continue..."
 read -r
 
-cryptsetup luksErase "$CRYPTROOT"
+cryptsetup luksErase -q "$CRYPTROOT"
 echo -n "$CRYPT_PASS" | cryptsetup luksFormat "$CRYPTROOT" -d -
 echo -n "$CRYPT_PASS" | cryptsetup open "$CRYPTROOT" cryptroot -d -
 BTRFS="/dev/mapper/cryptroot"
 
+echo "Press Enter to continue..."
+read -r
+
 mkfs.btrfs "$BTRFS"
 mount "$BTRFS" /mnt
-
-echo "Press Enter to continue..."
-read -r
-
-echo "Formatting EFI partition..."
-mkfs.fat -F 32 "$EFI"
-
-echo "Press Enter to continue..."
-read -r
-
-echo "Encrypting root partition..."
-echo -n "$CRYPT_PASS" | cryptsetup luksFormat "$CRYPTROOT" -d -
-echo -n "$CRYPT_PASS" | cryptsetup open "$CRYPTROOT" cryptroot -d - 
-BTRFS="/dev/mapper/cryptroot"
 
 echo "Press Enter to continue..."
 read -r
