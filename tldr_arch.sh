@@ -73,14 +73,13 @@ done
 echo "Press Enter to continue..."
 read -r
 
-echo "Please choose your locale in xx_XX format, for example en_US: "
+echo "Please choose your locale, for example en_US.UTF-8: "
 read -r LOCALE_INPUT
 if [ -z "$LOCALE_INPUT" ]; then
     echo "No locale detected, please try again."
 else
-    MATCHED_LOCALE=$(locale -a | grep -E "^${LOCALE_INPUT}\b" | head -n 1)
-    if [ -n "$MATCHED_LOCALE" ]; then
-        LOCALE="$MATCHED_LOCALE"
+    if locale -a | grep -q "^$LOCALE_INPUT$"; then
+        LOCALE="$LOCALE_INPUT"
     else
         echo "Invalid locale detected, please try again."
     fi
