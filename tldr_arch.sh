@@ -4,12 +4,6 @@
 # SUBSTITUTION VARIABLES
 ####################################################
 
-# Base Packages
-
-
-# Hyprland Packages
-HYPR_PKGS="hyprland"
-
 # GPU Packages
 GPU_PKGS="mesa xf86-video-amdgpu vulkan-radeon libva-mesa-driver mesa-vdpau"
 
@@ -49,7 +43,7 @@ echo "Checking secure boot status..."
 if [[ $secure_boot == y ]]; then
     setup_mode=$(bootctl status | grep -E "Secure Boot.*setup" | wc -l)
     if [[ $setup_mode -ne 1 ]]; then
-        echo "Setup mode is disabled, please enable setup mode before continuing."
+        echo "Secure boot setup mode is disabled, please enable setup mode before continuing."
         exit 1
     fi
 fi
@@ -162,15 +156,12 @@ do
     fi
 done
 
-echo "If you would like to add any additional packages to install, please choose them now, separated by spaces:"
+echo "If you would like to include any additional packages in the installation please add them here, separated by spaces, or leave empty to skip: "
 read -r OPT_PKGS_INPUT
 
 if [[ -n "$OPT_PKGS_INPUT" ]]; then
     IFS=' ' read -r -a OPT_PKGS <<< "$OPT_PKGS_INPUT"
-    echo "Optional packages specified: ${OPT_PKGS[*]}"
-    # Store the optional packages in a variable to use later
-    OPT_PKGS_INSTALL="echo "Installing optional packages..."
-pacstrap /mnt ${OPT_PKGS[@]}"
+    OPT_PKGS_INSTALL="pacstrap /mnt ${OPT_PKGS[@]}"
 else
     OPT_PKGS_INSTALL=""
 fi
@@ -315,7 +306,7 @@ arch-chroot /mnt systemctl enable sddm
 # INSTALLATION OF ADDITIONAL PACKAGES
 ####################################################
 
-$OPT_PKGS
+$OPT_PKGS_INSTALL
 
 ###############################
 # Installation of GPU Drivers
