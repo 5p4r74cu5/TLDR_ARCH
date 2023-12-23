@@ -39,7 +39,7 @@ if [[ $setup_mode -ne 1 ]]; then
     exit 1
 fi
 
-echo "Verifying internet connectivity.."
+echo "Verifying internet connectivity..."
 ping -c 1 archlinux.org > /dev/null
 if [[ $? -ne 0 ]]; then
     echo "No internet detected, internet must be connected before continuing with the installation."
