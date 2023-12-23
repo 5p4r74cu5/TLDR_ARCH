@@ -181,6 +181,7 @@ mkfs.fat -F 32 "$EFI"
 echo "Press Enter to continue..."
 read -r
 
+echo "Encrypting root partition..."
 cryptsetup luksErase -q "$CRYPTROOT"
 echo -n "$CRYPT_PASS" | cryptsetup luksFormat "$CRYPTROOT" -d -
 echo -n "$CRYPT_PASS" | cryptsetup open "$CRYPTROOT" cryptroot -d -
