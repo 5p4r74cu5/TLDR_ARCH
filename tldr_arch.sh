@@ -77,10 +77,9 @@ esac
 echo "Please choose a hostname: "
 read -r HOSTNAME
 if [[ -z "$HOSTNAME" ]]; then
-     echo "No hostname detected, please try again."
-     return 1
+    echo "No hostname detected, please try again."
+    exit 1
 fi
-return 0
 
 echo "Please choose your locale in xx_XX format, for example en_US: "
 read -r LOCALE
