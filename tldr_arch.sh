@@ -138,20 +138,33 @@ done
 echo "Press Enter to continue..."
 read -r
 
-while true; do
-    echo "List of available disks:"
-    DISK_LIST=($(lsblk -dpnoNAME | grep -P "/dev/sd|nvme|vd"))
-    DISK_COUNT=${#DISK_LIST[@]}
-    PS3="Please select which disk you would like to use for the installation (1-$DISK_COUNT): "
-    select ENTRY in "${DISK_LIST[@]}";
-    do
-        DISK="$ENTRY"
-        read -p "The installation will be completed using $DISK. All data on this disk will be erased, please type yes in capital letters to confirm your choice: " CONFIRM
-        if [[ "$CONFIRM" == "YES" ]]; then
-            break 2
-        fi
-    done
+#while true; do
+#    echo "List of available disks:"
+#    DISK_LIST=($(lsblk -dpnoNAME | grep -P "/dev/sd|nvme|vd"))
+#    DISK_COUNT=${#DISK_LIST[@]}
+#    PS3="Please select which disk you would like to use for the installation (1-$DISK_COUNT): "
+#    select ENTRY in "${DISK_LIST[@]}";
+#    do
+#        DISK="$ENTRY"
+#        read -p "The installation will be completed using $DISK. All data on this disk will be erased, please type yes in capital letters to confirm your choice: " CONFIRM
+#        if [[ "$CONFIRM" == "YES" ]]; then
+#            break 2
+#        fi
+#    done
+#done
+
+echo "Available disks for the installation:"
+PS3="Please select the number of the corresponding disk (e.g. 1): "
+select DISK in $(lsblk -dpnoNAME | grep -P "/dev/sd|nvme|vd");
+do
+    if [ -n "$DISK" ]; then
+        echo "Selected disk for Arch Linux installation: $DISK"
+        break
+    else
+        echo "Invalid selection. Please choose a valid disk number."
+    fi
 done
+
 
 echo "Press Enter to continue..."
 read -r
@@ -197,12 +210,28 @@ read -r
 echo "Creating partitions..."
 parted -s "$DISK" \
     mklabel gpt \
-    mkpart ESP fat32 1MiB 513MiB \
+    mkpart EFI fat32 1MiB 513MiB \
     set 1 esp on \
     mkpart CRYPTROOT 513MiB 100% \
-EFI="/dev/disk/by-partlabel/EFI"
-CRYPTROOT="/dev/disk/by-partlabel/CRYPTROOT"
-partprobe "$DISK"
+EFI="${DISK}1"
+CRYPTROOT="${DISK}2"
+
+echo "Press Enter to continue..."
+read -r
+
+echo "Formatting EFI partition..."
+mkfs.fat -F 32 "$EFI"
+
+echo "Press Enter to continue..."
+read -r
+
+cryptsetup luksErase "$CRYPTROOT"
+echo -n "$CRYPT_PASS" | cryptsetup luksFormat "$CRYPTROOT" -d -
+echo -n "$CRYPT_PASS" | cryptsetup open "$CRYPTROOT" cryptroot -d -
+BTRFS="/dev/mapper/cryptroot"
+
+mkfs.btrfs "$BTRFS"
+mount "$BTRFS" /mnt
 
 echo "Press Enter to continue..."
 read -r
