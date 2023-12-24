@@ -291,6 +291,12 @@ pacstrap /mnt $KDE_PKGS
 echo "Configuring KDE Plasma..."
 arch-chroot /mnt systemctl enable bluetooth
 
+# echo "Installing Gnome..."
+# GNOME_PKGS="gnome-shell nautilus gnome-terminal gnome-tweaks gnome-control-center xdg-user-dirs gnome-keyring"
+# pacstrap /mnt $GNOME_PKGS
+# echo "Configuring Gnome..."
+# Add commands to enable en_US in locales?
+
 echo "Installing SDDM..."
 DM_PKGS="sddm sddm-kcm"
 pacstrap /mnt $DM_PKGS
