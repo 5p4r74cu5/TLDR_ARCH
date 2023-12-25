@@ -286,13 +286,13 @@ pacstrap /mnt $AMD_GPU_PKGS
 ####################################################
 
 echo "Installing KDE Plasma..."
-KDE_PKGS="xorg-server plasma-desktop plasma-wayland-session xdg-desktop-portal-kde plasma-pa plasma-nm plasma-systemmonitor kscreen bluedevil powerdevil kdeplasma-addons ark discover dolphin firefox kate konsole okular spectacle flatpak"
+KDE_PKGS="xorg-server plasma-desktop plasma-wayland-session xdg-desktop-portal-kde plasma-pa plasma-nm plasma-systemmonitor kscreen bluedevil powerdevil kdeplasma-addons ark discover dolphin firefox kate konsole okular spectacle flatpak noto-fonts-cjk noto-fonts-emoji noto-fonts"
 pacstrap /mnt $KDE_PKGS
 echo "Configuring KDE Plasma..."
 arch-chroot /mnt systemctl enable bluetooth
 
 # echo "Installing Gnome..."
-# GNOME_PKGS="gnome-shell nautilus gnome-terminal gnome-tweaks gnome-control-center xdg-user-dirs gnome-keyring"
+# GNOME_PKGS="gnome-shell gnome-keyring gnome-tweaks xdg-user-dirs gnome-backgrounds gnome-control-center gnome-terminal nautilus"
 # pacstrap /mnt $GNOME_PKGS
 # echo "Configuring Gnome..."
 # Add commands to enable en_US in locales?
