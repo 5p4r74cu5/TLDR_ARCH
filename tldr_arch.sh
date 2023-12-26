@@ -286,7 +286,7 @@ pacstrap /mnt $AMD_GPU_PKGS
 ####################################################
 
 echo "Installing KDE Plasma..."
-KDE_PKGS="xorg-server plasma-desktop plasma-wayland-session xdg-desktop-portal-kde plasma-pa plasma-nm plasma-systemmonitor kscreen bluedevil powerdevil kdeplasma-addons ark discover dolphin firefox kate konsole okular spectacle flatpak noto-fonts-cjk noto-fonts-emoji noto-fonts"
+KDE_PKGS="xorg-server plasma-desktop plasma-wayland-session plasma-systemmonitor bluedevil powerdevil kdeplasma-addons kscreen plasma-nm plasma-pa xdg-desktop-portal-kde xdg-desktop-portal-gtk ark discover dolphin firefox kate konsole okular spectacle flatpak noto-fonts-cjk noto-fonts-emoji noto-fonts"
 pacstrap /mnt $KDE_PKGS
 echo "Configuring KDE Plasma..."
 arch-chroot /mnt systemctl enable bluetooth
